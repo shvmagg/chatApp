@@ -44,11 +44,10 @@ def watch_new_messages():
                 print(f"Change detected: {change}")
                 operationType=change.get('operationType')
                 if operationType=='insert':
+                    print("performing insert operation")
                     full_doc=change.get('fullDocument')
-                    msgs=full_doc.get('msg')
                     recieverId=full_doc.get('_id')
-                    user = getUser(recieverId)
-                    syncMessage(user,msgs)
+                    syncMsg(recieverId)
                     # if msgs:
                     #     recieverId=full_doc.get('_id')
                     #     user = getUser(recieverId)
@@ -59,6 +58,7 @@ def watch_new_messages():
                     
                     print("insert message implemented")
                 elif operationType=='update':
+                    print("performing update operation")
                     docKey=change.get('documentKey')
                     recieverId=docKey.get('_id')
                     user=getUser(recieverId)
@@ -91,7 +91,7 @@ def handelDefault(data, senderId):
 
 #sync messages
 def syncMsg(recieverId):
-    result = collection.find_one({"_id": recieverId})
+    result = collection.find_one_and_delete({"_id": recieverId})
     #print("result->",result)
     if result:
         for doc in result:
@@ -102,7 +102,7 @@ def syncMsg(recieverId):
         new_thread = Thread(target=syncMessage,args = (user,msgs,))
         new_thread.start()
         new_thread.join()#waiting for the thread execution
-        collection.delete_one({"_id":recieverId})
+        #collection.delete_one({"_id":recieverId})
 
     """if recieverId in store:
         user = getUser(recieverId)
@@ -158,7 +158,7 @@ def sendMessage(user:User,msg:str):
                     'text': msg
                 })
             )
-            collection.delete_one({"_id":user.userId})
+            # collection.delete_one({"_id":user.userId})
             # {'status': 'Online'}
         except Exception as e:
             print("An exception occurred in sendMessage:", e)
