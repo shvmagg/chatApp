@@ -181,24 +181,25 @@ def storeMsg(recieverId,data):
         "_id":recieverId
     }
     try:
-        entry=collection.find_one(check)
-        if entry is not None:
-            print("entry->",entry)
-            fill=collection.update_one(check, {"$push":{"msg":data}})
-            print("Matched count:", fill.matched_count)
-            print("Modified count:", fill.modified_count)
-            if fill.modified_count > 0:
-                print("New message added.")
-            else:
-                print("No documents were updated.")
-        else:
-            print("in db else")
-            msg={
-                "_id":recieverId,
-                "msg":[data]
-            }
-            collection.insert_one(msg)
-            """client.close()"""
+        collection.update_one(check, {"$push":{"msg":data}},upsert=True)
+        # entry=collection.find_one(check)
+        # if entry is not None:
+        #     print("entry->",entry)
+        # fill=collection.update_one(check, {"$push":{"msg":data}},upsert=True)
+        # print("Matched count:", fill.matched_count)
+        # print("Modified count:", fill.modified_count)
+        # if fill.modified_count > 0:
+        #     print("New message added.")
+        # else:
+        #     print("No documents were updated.")
+        # else:
+        #     print("in db else")
+        #     msg={
+        #         "_id":recieverId,
+        #         "msg":[data]
+        #     }
+        #     collection.insert_one(msg)
+        #     """client.close()"""
     except Exception as e:
         print("db error->",e)
 
