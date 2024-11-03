@@ -1,4 +1,5 @@
 #sending message
+from datetime import datetime
 from threading import Thread
 import asyncio
 import json
@@ -6,7 +7,7 @@ import json
 # from websockets import serializers
 from websockets.models import User
 from websockets.request_models import LogOutRequest, SendMessageRequest
-from websockets.response_models import SendMsgResponse
+from websockets.response_models import MessageStatus, SendMsgResponse
 #from websockets.models import User
 #from collections import namedtuple
 from pymongo import MongoClient
@@ -77,7 +78,7 @@ def watch_new_messages():
 def myHandler(type, data, senderId):#from , to, message, msg_type
     match type:
         case 'send_msg':
-            return handleSendMsg(data, senderId)#{"recieverId":2,"msg":"hello","msgType":"send_msg"}
+            return handleSendMsg(data, senderId)#{"recieverId":2,"msg":"hello","msgType":"send_msg"},{senderId:1}
         case 'logOut':
             return handleOffline(senderId) #data->userId(to be removed),msg_type
         case _:
@@ -92,11 +93,14 @@ def handelDefault(data, senderId):
 #sync messages
 def syncMsg(recieverId):
     result = collection.find_one_and_delete({"_id": recieverId})
-    #print("result->",result)
+    print("result->",result)
     if result:
         for doc in result:
-            print(doc)
+            print("doc->",doc)
         msgs=result.get("msg",[])
+        meta=result.get("meta")
+        msgs.append(meta)
+        print("msgs after appending meta->",msgs)
         print("msgs:",msgs)
         user = getUser(recieverId)
         new_thread = Thread(target=syncMessage,args = (user,msgs,))
@@ -110,8 +114,9 @@ def syncMsg(recieverId):
         new_thread = Thread(target=syncMessage,args = (user,msgs,))
         new_thread.start()
     """    
-def syncMessage(user:User,msgs):
+def syncMessage(user:User,msgs:list):
     i=0
+    print("syncMessage:",msgs)
     print(len(msgs))
     while i<len(msgs):
         sendMessage(user,msgs[i])
@@ -119,12 +124,14 @@ def syncMessage(user:User,msgs):
 
 
 #Handling send message
-def handleSendMsg(data, senderId):
+def handleSendMsg(data, senderId):#{'recieverId': 2, 'msg': 'hello', 'msgType': 'send_msg'}
     cm = SendMessageRequest(**data)#{"recieverId":2,"msg":"hello","msgType":"send_msg"}
     sm = SendMsgResponse(cm.msg,senderId)#message,msgType
     jsonMsg = json.dumps(sm.__dict__)
     print("msg:- ", jsonMsg)
-
+    ms = MessageStatus(senderId, cm.recieverId)
+    jsonStatus = json.dumps(ms.__dict__)
+    print("JsonStatus->",jsonStatus)
     storeMsg(cm.recieverId, jsonMsg)
 
 
@@ -143,7 +150,8 @@ def handleSendMsg(data, senderId):
 """
 
 
-def sendMessage(user:User,msg:str):
+def sendMessage(user:User,msg:list):
+    msg=json.dumps(msg)
     print("msg->",msg)
     print("user->",user)
     print(type(msg))
@@ -177,11 +185,19 @@ def storeMsg(recieverId,data):
         print("store->",store)
 """ 
     print("recieverId->",recieverId)
+    print("type of data in storeMsg->",type(data))
     check = {
         "_id":recieverId
     }
+    meta = {
+        "status":"sent",
+        "timestamp":datetime.now().timestamp()
+    }
     try:
-        collection.update_one(check, {"$push":{"msg":data}},upsert=True)
+        collection.update_one(check, {"$push":{"msg":data,"meta":meta}},upsert=True)
+        # toGetSender=json.loads(data)
+        # senderId=toGetSender.get("senderId")
+        # statusUpdate(senderId,meta)
         # entry=collection.find_one(check)
         # if entry is not None:
         #     print("entry->",entry)
@@ -216,3 +232,6 @@ def handleOffline(senderId):#user to be removed
         # {'status':'Already Offline'}
     print("ids->",ids)
     
+# async def statusUpdate(senderId:int,meta:dict):
+#     user=getUser(senderId)
+#     await sendMessage(user,meta)

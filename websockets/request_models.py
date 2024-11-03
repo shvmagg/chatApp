@@ -1,3 +1,4 @@
+from django.db import models
 class Request:
     type:str
     text:str
