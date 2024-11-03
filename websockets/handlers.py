@@ -133,7 +133,7 @@ def handleSendMsg(data, senderId):#{'recieverId': 2, 'msg': 'hello', 'msgType': 
     jsonStatus = json.dumps(ms.__dict__)
     print("JsonStatus->",jsonStatus)
     storeMsg(cm.recieverId, jsonMsg)
-
+    statusUpdate(ms.senderId,ms.recieverId,jsonStatus)
 
 """#def sendMsg(recieverId,data):#recieverId, {"msgType": "sm-send-msg", "senderId": 1, "msg": "Hello"}
     print(50)
@@ -151,7 +151,6 @@ def handleSendMsg(data, senderId):#{'recieverId': 2, 'msg': 'hello', 'msgType': 
 
 
 def sendMessage(user:User,msg:list):
-    msg=json.dumps(msg)
     print("msg->",msg)
     print("user->",user)
     print(type(msg))
@@ -189,12 +188,12 @@ def storeMsg(recieverId,data):
     check = {
         "_id":recieverId
     }
-    meta = {
-        "status":"sent",
-        "timestamp":datetime.now().timestamp()
-    }
+    # meta = {
+    #     "status":"sent",
+    #     "timestamp":datetime.now().timestamp()
+    # }
     try:
-        collection.update_one(check, {"$push":{"msg":data,"meta":meta}},upsert=True)
+        collection.update_one(check, {"$push":{"msg":data}},upsert=True)
         # toGetSender=json.loads(data)
         # senderId=toGetSender.get("senderId")
         # statusUpdate(senderId,meta)
@@ -232,6 +231,19 @@ def handleOffline(senderId):#user to be removed
         # {'status':'Already Offline'}
     print("ids->",ids)
     
-# async def statusUpdate(senderId:int,meta:dict):
-#     user=getUser(senderId)
-#     await sendMessage(user,meta)
+def statusUpdate(senderId,recieverId,status):#{"msgType": "sm-message-status", "senderId": 1, "recieverId": 2, "status": "offline", "timestamp": 1730594346.48119}
+    checkSender = {
+        "_id":senderId
+    }
+    try:
+        collection.update_one(checkSender, {"$push":{"msg":status}},upsert=True)
+    except Exception as e:
+        print("exception in updating message status to sender->",e)
+
+    checkReciever = {
+        "_id":recieverId
+    }
+    try:
+        collection.update_one(checkReciever, {"$push":{"msg":status}},upsert=True)
+    except Exception as e:
+        print("exception in updating message status to reciever->",e)
