@@ -25,6 +25,6 @@ class MessageStatus(models.Model):
         self.msgType="sm-message-status"
         self.senderId=senderId
         self.recieverId=recieverId
-        self.status="offline"
+        self.status="sent"
         self.timestamp=datetime.now().timestamp()
         

@@ -240,10 +240,10 @@ def statusUpdate(senderId,recieverId,status):#{"msgType": "sm-message-status", "
     except Exception as e:
         print("exception in updating message status to sender->",e)
 
-    checkReciever = {
-        "_id":recieverId
-    }
-    try:
-        collection.update_one(checkReciever, {"$push":{"msg":status}},upsert=True)
-    except Exception as e:
-        print("exception in updating message status to reciever->",e)
+    # checkReciever = {
+    #     "_id":recieverId
+    # }
+    # try:
+    #     collection.update_one(checkReciever, {"$push":{"msg":status}},upsert=True)
+    # except Exception as e:
+    #     print("exception in updating message status to reciever->",e)
