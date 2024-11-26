@@ -36,7 +36,9 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     'daphne',  #to work with websockets
     'chat_websockets', #project_name
-    'websockets', #our app named websockets
+    'sender', #our app named websockets
+    'receiver',# receiever app
+    'channels', #django channels to use multiple websockets
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,6 +47,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 ASGI_APPLICATION = "chat_websockets.asgi.application"
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('127.0.0.1', 6379)],  # Default Redis port
+        },
+    },
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
