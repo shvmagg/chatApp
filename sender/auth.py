@@ -9,7 +9,8 @@ def handleAuth(data,send):#{"senderId":1,"msgType":"auth"},Address
     cm=AuthRequest(**data)#{"senderId":2,"msgType":"auth"}
     #print(type(send))
     user=User(send,cm.senderId)
-    setUser(cm.senderId, user)
+    activeUsers = setUser(cm.senderId, user)
+    print("Active users->",activeUsers) #printing number of active users in ids in myhandlers
     syncMsg(cm.senderId)
     return user
     # {'status':'success'}

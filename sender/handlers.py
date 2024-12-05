@@ -29,6 +29,7 @@ def getUser(userid) -> User:
 
 def setUser(userid, user:User):
     ids[userid] = user
+    return ids
 
 def removeUser(userId):
     ids.pop(userId)
@@ -75,12 +76,12 @@ def watch_new_messages():
         print(f"An error occurred: {e}")
 
 
-def myHandler(type, data, senderId):#from , to, message, msg_type
+def myHandler(type, data, senderId):#from , to, message, msgType
     match type:
-        case 'send_msg':
-            return handleSendMsg(data, senderId)#{"recieverId":2,"msg":"hello","msgType":"send_msg"},{senderId:1}
+        case 'sendMsg':
+            return handleSendMsg(data, senderId)#{"recieverId":2,"msg":"hello","msgType":"sendMsg"},{senderId:1}
         case 'logOut':
-            return handleOffline(senderId) #data->userId(to be removed),msg_type
+            return handleOffline(senderId) #data->userId(to be removed),msgType
         case _:
             return handelDefault(data, senderId)
         
@@ -92,28 +93,34 @@ def handelDefault(data, senderId):
 
 #sync messages
 def syncMsg(recieverId):
-    result = collection.find_one_and_delete({"_id": recieverId})
-    print("result->",result)
-    if result:
-        for doc in result:
-            print("doc->",doc)
-        msgs=result.get("msg",[])
-        meta=result.get("meta")
-        msgs.append(meta)
-        print("msgs after appending meta->",msgs)
-        print("msgs:",msgs)
-        user = getUser(recieverId)
-        new_thread = Thread(target=syncMessage,args = (user,msgs,))
-        new_thread.start()
-        new_thread.join()#waiting for the thread execution
-        #collection.delete_one({"_id":recieverId})
+    user = getUser(recieverId)
+    if user is not None:
+        result = collection.find_one_and_delete({"_id": recieverId})
+        print("result->",result)
+        if result:
+            for doc in result:
+                print("doc->",doc)
+            msgs=result.get("msg",[])
+            # meta=result.get("meta")
+            # msgs.append(meta)
+            # print("msgs after appending meta->",msgs)
+            print("msgs:",msgs)
+            # user = getUser(recieverId)
+            new_thread = Thread(target=syncMessage,args = (user,msgs,))
+            new_thread.start()
+            new_thread.join()#waiting for the thread execution
+            #collection.delete_one({"_id":recieverId})
+        else:
+            print("No past messages for user")
+        """if recieverId in store:
+            user = getUser(recieverId)
+            msgs=store[recieverId]
+            new_thread = Thread(target=syncMessage,args = (user,msgs,))
+            new_thread.start()
+        """    
+    else:
+        print("User offline right now")
 
-    """if recieverId in store:
-        user = getUser(recieverId)
-        msgs=store[recieverId]
-        new_thread = Thread(target=syncMessage,args = (user,msgs,))
-        new_thread.start()
-    """    
 def syncMessage(user:User,msgs:list):
     i=0
     print("syncMessage:",msgs)
@@ -124,16 +131,16 @@ def syncMessage(user:User,msgs:list):
 
 
 #Handling send message
-def handleSendMsg(data, senderId):#{'recieverId': 2, 'msg': 'hello', 'msgType': 'send_msg'}
-    cm = SendMessageRequest(**data)#{"recieverId":2,"msg":"hello","msgType":"send_msg"}
+def handleSendMsg(data, senderId):#{'recieverId': 2, 'msg': 'hello', 'msgType': 'sendMsg'}
+    cm = SendMessageRequest(**data)#{"recieverId":2,"msg":"hello","msgType":"sendMsg"}
     sm = SendMsgResponse(cm.msg,senderId)#message,msgType
     jsonMsg = json.dumps(sm.__dict__)
     print("msg:- ", jsonMsg)
-    ms = MessageStatus(senderId, cm.recieverId)
-    jsonStatus = json.dumps(ms.__dict__)
-    print("JsonStatus->",jsonStatus)
+    # ms = MessageStatus(senderId, cm.recieverId)
+    # jsonStatus = json.dumps(ms.__dict__)
+    # print("JsonStatus->",jsonStatus)
     storeMsg(cm.recieverId, jsonMsg)
-    statusUpdate(ms.senderId,ms.recieverId,jsonStatus)
+    # statusUpdate(ms.senderId,ms.recieverId,jsonStatus)
 
 """#def sendMsg(recieverId,data):#recieverId, {"msgType": "sm-send-msg", "senderId": 1, "msg": "Hello"}
     print(50)
@@ -154,16 +161,16 @@ def sendMessage(user:User,msg:list):
     print("msg->",msg)
     print("user->",user)
     print(type(msg))
-    if user is None:
-        return {'status':'Offline'}
-    reciever = getUser(user.userId)
-    if reciever:
+    # if user is None:
+    #     return {'status':'Offline'}
+    # reciever = getUser(user.userId)
+    if user:
         try:
             asyncio.run(
-                user.send({ #we are gettting send method via ids[userId] which we added in the auth method and we are sending message to the user using this.
+                user.send(text_data=json.dumps({ #we are gettting send method via ids[userId] which we added in the auth method and we are sending message to the user using this.
                     'type': 'websocket.send',
                     'text': msg
-                })
+                }))
             )
             # collection.delete_one({"_id":user.userId})
             # {'status': 'Online'}
@@ -235,6 +242,7 @@ def statusUpdate(senderId,recieverId,status):#{"msgType": "sm-message-status", "
     checkSender = {
         "_id":senderId
     }
+    #make another db for just updating the timestamp of a user in which if a user dont exist a new entry with current timestamp will be made else its existing timestamp will be updated
     try:
         collection.update_one(checkSender, {"$push":{"msg":status}},upsert=True)
     except Exception as e:
